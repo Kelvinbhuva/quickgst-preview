@@ -19,16 +19,49 @@
 <body>
   <div id="boot" role="status">
     <strong>QuickGST Invoice</strong>
-    <span>Loading the preview… the first start can take a few seconds.</span>
+    <span id="boot-status">Loading the preview… the first start can take a few seconds.</span>
     <span>Preview only: your data is saved in this browser.</span>
   </div>
   <script>
     // pdf.js is published beside the page; the PDF preview loads it from here.
     window.dartPdfJsBaseUrl = new URL('pdfjs/', document.baseURI).href;
-    window.addEventListener('flutter-first-frame', function () {
+    (function () {
       var boot = document.getElementById('boot');
-      if (boot) boot.hidden = true;
-    });
+      var status = document.getElementById('boot-status');
+      var started = false;
+      function hideBoot() {
+        started = true;
+        if (boot) boot.remove();
+      }
+      function show(message) {
+        if (started || !status) return;
+        status.textContent = message;
+        status.style.color = '#a11d1d';
+      }
+      // Hide the loading note as soon as the app draws its first frame.
+      window.addEventListener('flutter-first-frame', hideBoot);
+      new MutationObserver(function () {
+        if (document.querySelector('flutter-view, flt-glass-pane')) {
+          setTimeout(hideBoot, 300);
+        }
+      }).observe(document.body, { childList: true, subtree: true });
+      // Show why the app could not start instead of an endless spinner.
+      window.addEventListener('error', function (e) {
+        show('The app could not start: ' + (e.message || 'script error') +
+          '. Try Chrome or Edge, and reload the page.');
+      });
+      window.addEventListener('unhandledrejection', function (e) {
+        show('The app could not start: ' + (e.reason && e.reason.message || e.reason) +
+          '. Try Chrome or Edge, and reload the page.');
+      });
+      if (typeof WebAssembly !== 'object') {
+        show('This browser cannot run the preview (WebAssembly is off). Use Chrome, Edge or Firefox.');
+      }
+      setTimeout(function () {
+        show('Still loading after 45 seconds. Check the internet connection, then reload. ' +
+          'If it keeps happening, send a screenshot of this screen.');
+      }, 45000);
+    })();
   </script>
   <script src="flutter_bootstrap.js" async></script>
 </body>
