@@ -63,6 +63,41 @@
       }, 45000);
     })();
   </script>
-  <script src="flutter_bootstrap.js" async></script>
+  <script>
+    // ?reset=1 clears data saved by earlier preview visits, then starts fresh.
+    (function () {
+      function start() {
+        var script = document.createElement('script');
+        script.src = 'flutter_bootstrap.js';
+        script.async = true;
+        document.body.appendChild(script);
+      }
+      if (!/[?&]reset=1/.test(location.search)) return start();
+      var jobs = [];
+      try {
+        if (indexedDB.databases) {
+          jobs.push(indexedDB.databases().then(function (dbs) {
+            return Promise.all(dbs.map(function (db) {
+              return new Promise(function (done) {
+                var req = indexedDB.deleteDatabase(db.name);
+                req.onsuccess = req.onerror = req.onblocked = function () { done(); };
+              });
+            }));
+          }));
+        }
+        if (navigator.storage && navigator.storage.getDirectory) {
+          jobs.push(navigator.storage.getDirectory().then(async function (root) {
+            for await (const name of root.keys()) {
+              await root.removeEntry(name, { recursive: true }).catch(function () {});
+            }
+          }));
+        }
+      } catch (e) { /* start anyway */ }
+      Promise.all(jobs).catch(function () {}).then(function () {
+        history.replaceState(null, '', location.pathname);
+        start();
+      });
+    })();
+  </script>
 </body>
 </html>
